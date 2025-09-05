@@ -51,4 +51,45 @@ router.post('/signup', async function (req, res, next) {
   }
 })
 
+// 로그인
+router.post('/signin', async function (req, res, next) {
+  try {
+    var username = req.body.username;
+    var password = req.body.password;
+
+    // 입력값 검증
+    if (!username || !password) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    // DB 연결
+    var database = req.app.get('database');
+    var users = database.collection('users');
+
+    // 사용자 조회
+    const existingUser = await users.findOne({ username: username });
+    if (existingUser) {
+      var compareResult = bcrypt.compareSync(password, existingUser.password);
+      if (compareResult) {
+        // 세션에 사용자 정보 저장
+        req.session.isAuthenticated = true;
+        req.session.userId = existingUser._id.toString();
+        req.session.username = existingUser.username;
+        req.session.nickname = existingUser.nickname;
+        res.json({ message: 'Login successful.' });
+      }
+      else {
+        res.status(401).json({ message: 'Invalid password.' });
+      }
+    }
+    else{
+      res.status(401).json({ message: 'User not found.' });
+    }
+  }
+  catch (error) {
+    console.error('Error during signin');
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+})
+
 module.exports = router;
